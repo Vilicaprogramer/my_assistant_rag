@@ -1,1 +1,5 @@
-Set-Content -Path .gitignore -Value "venv/`nvector_db/`n.env`n__pycache__/`n*.pyc"
+.env
+vector_db/
+venv/
+__pycache__/
+*.pyc
