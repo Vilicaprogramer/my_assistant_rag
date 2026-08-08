@@ -1,0 +1,124 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aura RAG - Asistente Experto en Documentos</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome para iconos -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Estilos personalizados -->
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <div class="logo-glow"></div>
+                    <i class="fa-solid fa-brain"></i>
+                    <span>Aura RAG</span>
+                </div>
+            </div>
+            
+            <button class="btn-new-chat" id="btn-new-chat">
+                <i class="fa-solid fa-plus"></i> Nuevo Chat
+            </button>
+            
+            <div class="history-section">
+                <h3>Conversaciones</h3>
+                <div class="history-list" id="history-list">
+                    <!-- Dinamico con JS -->
+                </div>
+            </div>
+
+            <div class="sidebar-footer">
+                <div class="status-indicator ready">
+                    <span class="status-dot" style="background: var(--accent-cyan); box-shadow: 0 0 10px var(--accent-cyan);"></span>
+                    <span class="status-text" style="color: var(--text-sub);">Asistente Activo</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Chat Area -->
+        <main class="chat-area">
+            <header class="chat-header">
+                <div class="header-info">
+                    <h2>Asistente de Inteligencia Documental</h2>
+                    <p class="model-badge"><i class="fa-solid fa-sparkles"></i> Gemini 1.5 Flash</p>
+                </div>
+                <div class="header-actions">
+                    <button class="icon-btn" id="btn-clear" title="Limpiar chat actual">
+                        <i class="fa-solid fa-trash-can"></i>
+                    </button>
+                </div>
+            </header>
+
+            <div class="workspace-layout">
+                <!-- Message Feed Container -->
+                <div class="messages-container" id="messages-container">
+                    <div class="welcome-message" id="welcome-message">
+                        <div class="welcome-icon">
+                            <i class="fa-solid fa-folder-open"></i>
+                        </div>
+                        <h1>Hola, soy Aura</h1>
+                        <p>Puedo ayudarte a extraer conocimiento y responder preguntas sobre los documentos que guardes en la carpeta local <code>/docs</code>.</p>
+                        <div class="welcome-steps">
+                            <div class="step-card">
+                                <div class="step-number">1</div>
+                                <p>Copia archivos (.pdf, .txt o .md) en la carpeta <code>/docs</code>.</p>
+                            </div>
+                            <div class="step-card">
+                                <div class="step-number">2</div>
+                                <p>Haz clic en "Indexar /docs" en la barra lateral para procesarlos.</p>
+                            </div>
+                            <div class="step-card">
+                                <div class="step-number">3</div>
+                                <p>¡Comienza a hacer preguntas sobre tu contenido!</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- References Drawer (On the right) -->
+                <aside class="references-panel" id="references-panel">
+                    <div class="panel-header">
+                        <h3><i class="fa-solid fa-quote-right"></i> Fuentes Citadas</h3>
+                        <button class="close-panel-btn" id="close-references"><i class="fa-solid fa-xmark"></i></button>
+                    </div>
+                    <div class="panel-content" id="references-content">
+                        <div class="no-references">
+                            <i class="fa-solid fa-circle-info"></i>
+                            <p>Selecciona un mensaje del asistente para ver las fuentes utilizadas.</p>
+                        </div>
+                    </div>
+                </aside>
+            </div>
+
+            <!-- Input Container -->
+            <footer class="input-container">
+                <form class="input-form" id="chat-form">
+                    <div class="input-wrapper">
+                        <input type="text" id="user-input" placeholder="Pregunta algo sobre tus documentos..." autocomplete="off" required>
+                        <button type="submit" class="btn-send" id="btn-send">
+                            <i class="fa-solid fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </form>
+                <div class="input-footer-note">
+                    Aura RAG genera respuestas basadas estrictamente en la base de datos documental.
+                </div>
+            </footer>
+        </main>
+    </div>
+
+    <!-- Notificaciones Toast -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
