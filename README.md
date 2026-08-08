@@ -96,6 +96,6 @@ Coloca tus manuales en formato PDF, TXT o MD dentro de la carpeta docs/.
 
 ```bash
     python app.py
-
+```
 3. **Accede al chat:**
 Abre tu navegador en http://127.0.0.1:5000 y empieza a consultar tu documentación mediante una interfaz web sencilla e intuitiva.
