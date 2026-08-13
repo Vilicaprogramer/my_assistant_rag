@@ -130,7 +130,13 @@ def build_system_prompt(context_str: str) -> str:
 
         "Solo si el tema es completamente ajeno al contexto, debes responder EXACTAMENTE con la frase: "
 
-        "'Lo siento, no puedo responder a esa pregunta basándome en la documentación provista.'\n\n"
+        "'Lo siento, no puedo responder a esa pregunta, está fuera del alcance de la documentación provista.'\n\n"
+        "REGLAS DE FORMATO OBLIGATORIAS:\n"
+        "1. Usa Markdown claro y estructurado para responder.\n"
+        "2. Utiliza encabezados de nivel 3 (###) para separar secciones principales.\n"
+        "3. Si enumeras elementos o listas, coloca CADA elemento en una NUEVA LÍNEA usando viñetas (* o -).\n"
+        "4. Deja un doble salto de línea entre párrafos y secciones para que el texto sea legible.\n"
+        "5. Resalta nombres de secciones, páginas o términos clave usando **negrita**.\n"
 
         f"CONTEXTO:\n{context_str}"
 

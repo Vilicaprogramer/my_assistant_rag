@@ -3,19 +3,14 @@
 // ==========================================
 let currentSessionId = "";
 let sessions = {};
+const INACTIVITY_TIMEOUT_MS = 30 * 60 * 1000; // 30 Minutos
 
-// Inicializacion al cargar el DOM
+// Inicialización
 document.addEventListener("DOMContentLoaded", () => {
     loadSessions();
     setupEventListeners();
-    
-    // Iniciar con sesion activa o crear una nueva
-    const lastSession = localStorage.getItem("aura_last_session");
-    if (lastSession && sessions[lastSession]) {
-        selectSession(lastSession);
-    } else {
-        createNewChat();
-    }
+    checkInactivityAndInitialize();
+    setupActivityTracker();
 });
 
 function generateId() {
@@ -25,11 +20,7 @@ function generateId() {
 function loadSessions() {
     const stored = localStorage.getItem("aura_sessions");
     if (stored) {
-        try {
-            sessions = JSON.parse(stored);
-        } catch (e) {
-            sessions = {};
-        }
+        try { sessions = JSON.parse(stored); } catch (e) { sessions = {}; }
     }
 }
 
@@ -39,19 +30,94 @@ function saveSessions() {
 }
 
 // ==========================================
-// CONFIGURACIÓN DE EVENT LISTENERS
+// LÓGICA DE INACTIVIDAD (30 MINUTOS)
+// ==========================================
+function checkInactivityAndInitialize() {
+    const lastActivity = localStorage.getItem("aura_last_activity");
+    const now = Date.now();
+
+    if (lastActivity && (now - parseInt(lastActivity, 10)) > INACTIVITY_TIMEOUT_MS) {
+        // Superado el tiempo de inactividad: crear nuevo chat limpio
+        createNewChat();
+        showToast("Sesión reiniciada por inactividad (30 min)", "info");
+    } else {
+        // Cargar última sesión activa
+        const lastSession = localStorage.getItem("aura_last_session");
+        if (lastSession && sessions[lastSession]) {
+            selectSession(lastSession);
+        } else {
+            createNewChat();
+        }
+    }
+    updateActivityTimestamp();
+}
+
+function updateActivityTimestamp() {
+    localStorage.setItem("aura_last_activity", Date.now().toString());
+}
+
+function setupActivityTracker() {
+    ["click", "keydown", "mousemove", "scroll"].forEach(eventType => {
+        window.addEventListener(eventType, throttle(updateActivityTimestamp, 5000));
+    });
+}
+
+function throttle(func, limit) {
+    let inThrottle;
+    return function () {
+        if (!inThrottle) {
+            func.apply(this, arguments);
+            inThrottle = true;
+            setTimeout(() => inThrottle = false, limit);
+        }
+    };
+}
+
+// ==========================================
+// EVENT LISTENERS & SIDEBAR RESPONSIVE
 // ==========================================
 function setupEventListeners() {
     document.getElementById("chat-form").addEventListener("submit", handleFormSubmit);
-    document.getElementById("btn-new-chat").addEventListener("click", createNewChat);
+    document.getElementById("btn-new-chat").addEventListener("click", () => {
+        createNewChat();
+        closeSidebarMobile();
+    });
     document.getElementById("btn-clear").addEventListener("click", clearCurrentChat);
     document.getElementById("close-references").addEventListener("click", () => {
         document.getElementById("references-panel").classList.remove("open");
     });
+
+    // Control Sidebar
+    const btnToggle = document.getElementById("btn-toggle-sidebar");
+    const btnCloseMobile = document.getElementById("btn-close-sidebar-mobile");
+    const overlay = document.getElementById("sidebar-overlay");
+
+    btnToggle.addEventListener("click", toggleSidebar);
+    if (btnCloseMobile) btnCloseMobile.addEventListener("click", closeSidebarMobile);
+    if (overlay) overlay.addEventListener("click", closeSidebarMobile);
+}
+
+function toggleSidebar() {
+    const sidebar = document.getElementById("sidebar");
+    const overlay = document.getElementById("sidebar-overlay");
+
+    if (window.innerWidth <= 768) {
+        sidebar.classList.toggle("mobile-open");
+        overlay.classList.toggle("active");
+    } else {
+        sidebar.classList.toggle("collapsed");
+    }
+}
+
+function closeSidebarMobile() {
+    const sidebar = document.getElementById("sidebar");
+    const overlay = document.getElementById("sidebar-overlay");
+    sidebar.classList.remove("mobile-open");
+    if (overlay) overlay.classList.remove("active");
 }
 
 // ==========================================
-// MANEJADORES DE UI & CHAT
+// MANEJADORES DE CHAT
 // ==========================================
 function createNewChat() {
     const newId = generateId();
@@ -60,22 +126,19 @@ function createNewChat() {
     saveSessions();
     renderSessionsList();
     selectSession(newId);
-    showWelcomeScreen(true);
 }
 
 function selectSession(sessionId) {
     currentSessionId = sessionId;
     saveSessions();
-    
-    // Cambiar estado activo en barra lateral
+
     document.querySelectorAll(".history-item").forEach(item => {
         item.classList.toggle("active", item.dataset.id === sessionId);
     });
-    
-    // Re-renderizar mensajes
+
     const container = document.getElementById("messages-container");
     container.innerHTML = "";
-    
+
     const msgs = sessions[sessionId] || [];
     if (msgs.length === 0) {
         showWelcomeScreen(true);
@@ -83,7 +146,7 @@ function selectSession(sessionId) {
         showWelcomeScreen(false);
         msgs.forEach(msg => appendMessageUI(msg.text, msg.sender, msg.sources));
     }
-    
+
     document.getElementById("references-panel").classList.remove("open");
 }
 
@@ -95,25 +158,9 @@ function showWelcomeScreen(show) {
             welcome.className = "welcome-message";
             welcome.id = "welcome-message";
             welcome.innerHTML = `
-                <div class="welcome-icon">
-                    <i class="fa-solid fa-folder-open"></i>
-                </div>
+                <div class="welcome-icon"><i class="fa-solid fa-folder-open"></i></div>
                 <h1>Hola, soy Aura</h1>
-                <p>Puedo ayudarte a extraer conocimiento y responder preguntas sobre los documentos que guardes en la carpeta local <code>/docs</code>.</p>
-                <div class="welcome-steps">
-                    <div class="step-card">
-                        <div class="step-number">1</div>
-                        <p>Copia archivos (.pdf, .txt o .md) en la carpeta <code>/docs</code>.</p>
-                    </div>
-                    <div class="step-card">
-                        <div class="step-number">2</div>
-                        <p>Haz clic en "Indexar /docs" en la barra lateral para procesarlos.</p>
-                    </div>
-                    <div class="step-card">
-                        <div class="step-number">3</div>
-                        <p>¡Comienza a hacer preguntas sobre tu contenido!</p>
-                    </div>
-                </div>
+                <p>Puedo ayudarte a extraer conocimiento y responder preguntas sobre tus documentos.</p>
             `;
             document.getElementById("messages-container").appendChild(welcome);
         }
@@ -137,30 +184,23 @@ function deleteSession(sessionId, event) {
     delete sessions[sessionId];
     saveSessions();
     renderSessionsList();
-    
-    // Si borramos la activa, cambiamos a otra o creamos nueva
+
     if (currentSessionId === sessionId) {
         const keys = Object.keys(sessions);
-        if (keys.length > 0) {
-            selectSession(keys[0]);
-        } else {
-            createNewChat();
-        }
+        if (keys.length > 0) selectSession(keys[0]);
+        else createNewChat();
     }
     showToast("Conversación eliminada", "success");
 }
 
-// ==========================================
-// RENDERIZADO DE ELEMENTOS EN EL DOM
-// ==========================================
 function renderSessionsList() {
     const list = document.getElementById("history-list");
     list.innerHTML = "";
-    
+
     Object.keys(sessions).reverse().forEach(id => {
         const msgs = sessions[id];
         const lastMsg = msgs.length > 0 ? msgs[msgs.length - 1].text : "Chat vacío";
-        
+
         const item = document.createElement("div");
         item.className = `history-item ${id === currentSessionId ? "active" : ""}`;
         item.dataset.id = id;
@@ -168,79 +208,79 @@ function renderSessionsList() {
             <span>${lastMsg}</span>
             <i class="fa-solid fa-trash delete-session-btn"></i>
         `;
-        item.addEventListener("click", () => selectSession(id));
+        item.addEventListener("click", () => {
+            selectSession(id);
+            closeSidebarMobile();
+        });
         item.querySelector(".delete-session-btn").addEventListener("click", (e) => deleteSession(id, e));
-        
+
         list.appendChild(item);
     });
 }
 
+// ==========================================
+// RENDERIZADO DE MENSAJES Y ENLACES PDF
+// ==========================================
 function appendMessageUI(text, sender, sources = []) {
     showWelcomeScreen(false);
     const container = document.getElementById("messages-container");
     const row = document.createElement("div");
     row.className = `message-row ${sender}`;
-    
+
+    const formattedText = (sender === "assistant" && typeof marked !== "undefined")
+        ? marked.parse(text)
+        : text;
+
     let sourcesHTML = "";
     if (sender === "assistant" && sources && sources.length > 0) {
         sourcesHTML = `<div class="message-sources">`;
-        sources.forEach((src, idx) => {
+        sources.forEach((src) => {
+            // Genera enlace con salto directo a la página del PDF (#page=X)
+            const pdfUrl = `/docs/${encodeURIComponent(src.source)}#page=${src.page}`;
             sourcesHTML += `
-                <span class="source-badge" data-index="${idx}">
-                    <i class="fa-solid fa-file-invoice"></i> ${src.source} (Pág. ${src.page})
-                </span>`;
+                <a href="${pdfUrl}" target="_blank" class="source-badge" title="Abrir documento en página ${src.page}">
+                    <i class="fa-solid fa-file-pdf"></i> ${src.source} (Pág. ${src.page})
+                </a>`;
         });
         sourcesHTML += `</div>`;
     }
-    
+
     row.innerHTML = `
         <div class="message-bubble">
-            <div class="message-text">${text}</div>
+            <div class="message-text">${formattedText}</div>
             ${sourcesHTML}
         </div>
     `;
-    
-    // Configurar listeners de clicks en las fuentes
+
     if (sender === "assistant" && sources && sources.length > 0) {
         row.querySelectorAll(".source-badge").forEach(badge => {
-            badge.addEventListener("click", () => showReferences(sources));
+            badge.addEventListener("click", (e) => {
+                // Al hacer clic abre el PDF en nueva pestaña y actualiza el panel lateral de referencias
+                showReferences(sources);
+            });
         });
     }
-    
-    // Ocultar panel de referencias si no hay fuentes
-    if (sender === "assistant" && (!sources || sources.length === 0)) {
-        const panel = document.getElementById("references-panel");
-        if (panel) {
-            panel.classList.remove("open");
-            const content = document.getElementById("references-content");
-            if (content) content.innerHTML = "";
-        }
-    }
-    
+
     container.appendChild(row);
     container.scrollTop = container.scrollHeight;
 }
 
-// ==========================================
-// LLAMADAS A LA API DEL SERVIDOR FLASK
-// ==========================================
 async function handleFormSubmit(e) {
     e.preventDefault();
+    updateActivityTimestamp();
     const input = document.getElementById("user-input");
     const text = input.value.trim();
     if (!text) return;
-    
+
     input.value = "";
     appendMessageUI(text, "user");
-    
-    // Guardar en estado local
+
     sessions[currentSessionId].push({ text: text, sender: "user", sources: [] });
     saveSessions();
     renderSessionsList();
-    
-    // Mostrar indicador de escritura
+
     const typingIndicator = showTypingIndicator();
-    
+
     try {
         const response = await fetch("/api/chat", {
             method: "POST",
@@ -249,12 +289,9 @@ async function handleFormSubmit(e) {
         });
         const data = await response.json();
         removeTypingIndicator(typingIndicator);
-        
+
         if (data.status === "success") {
             appendMessageUI(data.response, "assistant", data.sources);
-            if (!data.sources || data.sources.length === 0) {
-                document.getElementById("references-panel").classList.remove("open");
-            }
             sessions[currentSessionId].push({
                 text: data.response,
                 sender: "assistant",
@@ -271,34 +308,35 @@ async function handleFormSubmit(e) {
     }
 }
 
-// ==========================================
-// PANEL DE REFERENCIAS & COMPONENTES EXTRA
-// ==========================================
 function showReferences(sources) {
     const panel = document.getElementById("references-panel");
     const content = document.getElementById("references-content");
     content.innerHTML = "";
-    
+
     if (!sources || sources.length === 0) {
         panel.classList.remove("open");
         return;
     }
-    
+
     sources.forEach(src => {
+        const pdfUrl = `/docs/${encodeURIComponent(src.source)}#page=${src.page}`;
         const card = document.createElement("div");
         card.className = "ref-card";
         card.innerHTML = `
             <div class="ref-card-header">
-                <i class="fa-solid fa-file-lines"></i>
+                <i class="fa-solid fa-file-pdf"></i>
                 <span>${src.source}</span>
             </div>
             <div class="ref-card-body">
-                Este fragmento de respuesta se basa en la página <strong>${src.page}</strong> del documento original.
+                Fragmento extraído de la página <strong>${src.page}</strong>.
             </div>
+            <a href="${pdfUrl}" target="_blank" class="ref-pdf-link">
+                <i class="fa-solid fa-arrow-up-right-from-square"></i> Abrir PDF en página ${src.page}
+            </a>
         `;
         content.appendChild(card);
     });
-    
+
     panel.classList.add("open");
 }
 
@@ -321,9 +359,7 @@ function showTypingIndicator() {
 }
 
 function removeTypingIndicator(element) {
-    if (element && element.parentNode) {
-        element.parentNode.removeChild(element);
-    }
+    if (element && element.parentNode) element.parentNode.removeChild(element);
 }
 
 function showToast(message, type = "success") {
@@ -332,7 +368,7 @@ function showToast(message, type = "success") {
     toast.className = `toast ${type}`;
     toast.innerText = message;
     container.appendChild(toast);
-    
+
     setTimeout(() => {
         toast.style.opacity = "0";
         setTimeout(() => toast.remove(), 300);

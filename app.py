@@ -1,5 +1,5 @@
 ﻿import os
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, jsonify, render_template, send_from_directory
 from dotenv import load_dotenv
 from src.ingestion import ingest_all
 from src.rag_graph import query_rag
@@ -14,7 +14,7 @@ app = Flask(
 
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "rag_assistant_secret_key_123")
 
-# Ingesta automatica al arrancar (evitando ejecucion doble en debug reloader)
+# Ingesta automática al arrancar (evitando ejecución doble en debug reloader)
 from src.ingestion import check_and_auto_ingest
 if not app.debug or os.environ.get("WERKZEUG_RUN_MAIN") == "true":
     check_and_auto_ingest("docs", "vector_db")
@@ -22,9 +22,17 @@ if not app.debug or os.environ.get("WERKZEUG_RUN_MAIN") == "true":
 @app.route("/")
 def index():
     """
-    Ruta raiz: Renderiza la vista principal del chat.
+    Ruta raíz: Renderiza la vista principal del chat.
     """
     return render_template("index.html")
+
+@app.route("/docs/<path:filename>")
+def serve_pdf(filename):
+    """
+    Ruta GET /docs/<filename>: Sirve los archivos PDF o documentos 
+    almacenados en el directorio 'docs'.
+    """
+    return send_from_directory("docs", filename)
 
 @app.route("/api/ingest", methods=["POST"])
 def api_ingest():
